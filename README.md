@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🚌 goSchool — Monitoramento de Transporte Escolar
 
 Aplicativo Flutter para monitoramento em tempo real de crianças no transporte escolar.
@@ -143,3 +144,7 @@ lib/
 - [ ] Notificações push com Firebase FCM
 - [ ] Google Maps com rotas reais (Directions API)
 - [ ] App para iOS e Android nas stores
+=======
+# GoAchool
+GoSchool é sistema web para otimização de rotas de vans escolares, ajudando empresas a reduzir custos, organizar o transporte e acompanhar o embarque e desembarque dos alunos com mais segurança
+>>>>>>> 2fd4ee7f9f67e14a19167499f2376fe95a233c57
