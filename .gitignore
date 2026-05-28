@@ -21,6 +21,8 @@ migrate_working_dir/
 # Variáveis de ambiente — nunca commitar
 .env
 
+# Chave da API — não enviar pro Git
+web/index.html
 
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
