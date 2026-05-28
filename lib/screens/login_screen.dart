@@ -180,7 +180,7 @@ class _RoleTab extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            boxShadow: selected ? [BoxShadow(color: Colors.black12, blurRadius: 4)] : [],
+            boxShadow: selected ? [const BoxShadow(color: Colors.black12, blurRadius: 4)] : [],
             border: selected ? Border.all(color: AppTheme.yellowDark.withOpacity(0.3)) : null,
           ),
           child: Text(

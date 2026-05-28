@@ -22,9 +22,9 @@ class HistoricoTab extends StatelessWidget {
             const Text('📅 Histórico de viagens', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.navy)),
             const SizedBox(height: 14),
             // Header
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(children: const [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Row(children: [
                 Expanded(flex: 2, child: Text('Data', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.gray400))),
                 Expanded(flex: 2, child: Text('Embarque', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.gray400))),
                 Expanded(flex: 2, child: Text('Escola', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.gray400))),
@@ -39,13 +39,13 @@ class HistoricoTab extends StatelessWidget {
         const SizedBox(height: 14),
 
         // Resumo
-        Card(
+        const Card(
           color: AppTheme.navy,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('📊 Resumo do mês', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.yellow)),
-              const SizedBox(height: 14),
+              Text('📊 Resumo do mês', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.yellow)),
+              SizedBox(height: 14),
               Row(children: [
                 _ResumoItem(valor: '18', label: 'Dias presentes', cor: AppTheme.green),
                 _ResumoItem(valor: '1', label: 'Faltas', cor: AppTheme.red),
