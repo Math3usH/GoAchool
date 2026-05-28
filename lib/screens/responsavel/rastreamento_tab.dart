@@ -1,27 +1,102 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../services/app_state.dart';
+import '../../services/directions_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/widgets.dart';
 
-class RastreamentoTab extends StatelessWidget {
+class RastreamentoTab extends StatefulWidget {
   const RastreamentoTab({super.key});
+  @override
+  State<RastreamentoTab> createState() => _RastreamentoTabState();
+}
+
+class _RastreamentoTabState extends State<RastreamentoTab> {
+  GoogleMapController? _mapController;
+  List<LatLng> _rotaPoints = [];
+
+  final _schoolPos = const LatLng(-27.1700, -51.5030);
+  final List<LatLng> _paradas = const [
+    LatLng(-27.1731, -51.5069),
+    LatLng(-27.1745, -51.5080),
+    LatLng(-27.1720, -51.5055),
+    LatLng(-27.1760, -51.5090),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _carregarRota());
+  }
+
+  Future<void> _carregarRota() async {
+    final state = context.read<AppState>();
+    final origin = LatLng(state.vanLat, state.vanLng);
+    final points = await DirectionsService.getRoute(
+      origin: origin,
+      destination: _schoolPos,
+      waypoints: _paradas,
+    );
+    if (mounted) setState(() => _rotaPoints = points);
+  }
+
+  Set<Marker> _buildMarkers(AppState state) {
+    final markers = <Marker>{};
+    markers.add(Marker(
+      markerId: const MarkerId('van'),
+      position: LatLng(state.vanLat, state.vanLng),
+      infoWindow: InfoWindow(title: '🚐 Van — Carlos Fernandes', snippet: '${state.vanVelocidade.round()} km/h'),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow),
+    ));
+    markers.add(Marker(
+      markerId: const MarkerId('escola'),
+      position: _schoolPos,
+      infoWindow: const InfoWindow(title: '🏫 Escola Estadual Boa Vista'),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+    ));
+    final nomes = ['Lucas Vieira', 'Ana Beatriz', 'Pedro Henrique', 'Maria Fernanda'];
+    for (var i = 0; i < _paradas.length; i++) {
+      markers.add(Marker(
+        markerId: MarkerId('parada_$i'),
+        position: _paradas[i],
+        infoWindow: InfoWindow(title: '📍 ${nomes[i]}'),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+      ));
+    }
+    return markers;
+  }
+
+  Set<Polyline> _buildRoute() {
+    if (_rotaPoints.isEmpty) return {};
+    return {
+      Polyline(
+        polylineId: const PolylineId('rota_van'),
+        color: AppTheme.orange,
+        width: 4,
+        points: _rotaPoints,
+      ),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
 
+    // Mover câmera quando van se move
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLng(LatLng(state.vanLat, state.vanLng)),
+      );
+    });
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Stats
         GridView.count(
-          crossAxisCount: 3,
-          shrinkWrap: true,
+          crossAxisCount: 3, shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 1.1,
+          crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.1,
           children: const [
             StatCard(icon: '🚌', value: '3,2 km', label: 'Distância hoje', iconBg: AppTheme.yellowLight),
             StatCard(icon: '✅', value: '18', label: 'Dias no mês', iconBg: AppTheme.greenLight),
@@ -30,7 +105,6 @@ class RastreamentoTab extends StatelessWidget {
         ),
         const SizedBox(height: 14),
 
-        // ETAs
         Row(children: [
           Expanded(child: EtaBox(icon: '🏫', label: 'Chegada na escola', hora: state.etaEscola, sub: 'Previsão estimada', bg: AppTheme.navy)),
           const SizedBox(width: 10),
@@ -38,7 +112,6 @@ class RastreamentoTab extends StatelessWidget {
         ]),
         const SizedBox(height: 14),
 
-        // Status Lucas
         Card(child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -53,57 +126,68 @@ class RastreamentoTab extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value: state.progressoRota,
-                minHeight: 8,
+                value: state.progressoRota, minHeight: 8,
                 backgroundColor: AppTheme.gray200,
                 valueColor: AlwaysStoppedAnimation<Color>(state.vanEmRota ? AppTheme.yellow : AppTheme.orange),
               ),
             ),
             const SizedBox(height: 8),
-            Text('Última atualização: ${_horaAtual()}', style: const TextStyle(fontSize: 12, color: AppTheme.gray400)),
+            Text('Velocidade: ${state.vanVelocidade.round()} km/h', style: const TextStyle(fontSize: 12, color: AppTheme.gray400)),
           ]),
         )),
         const SizedBox(height: 14),
 
-        // Mapa
         Card(child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('🗺️ Localização em tempo real', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.navy)),
+            Row(children: [
+              const Expanded(child: Text('🗺️ Localização em tempo real', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.navy))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: AppTheme.greenLight, borderRadius: BorderRadius.circular(20)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(width: 7, height: 7, decoration: const BoxDecoration(color: AppTheme.green, shape: BoxShape.circle)),
+                  const SizedBox(width: 5),
+                  const Text('AO VIVO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF166534))),
+                ]),
+              ),
+            ]),
             const SizedBox(height: 12),
-            MapaPlaceholder(
-              height: 280,
-              velocidade: state.vanVelocidade.round().toString(),
-              motorista: 'Carlos Fernandes',
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 300,
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(target: LatLng(state.vanLat, state.vanLng), zoom: 14),
+                  onMapCreated: (c) => _mapController = c,
+                  markers: _buildMarkers(state),
+                  polylines: _buildRoute(),
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: true,
+                  mapToolbarEnabled: false,
+                ),
+              ),
             ),
           ]),
         )),
         const SizedBox(height: 14),
 
-        // Alertas
         AlertBanner(
           message: '✅ Lucas entrou na van às 07:20 — Rua das Flores, 148',
-          color: const Color(0xFF166534),
-          bg: AppTheme.greenLight,
+          color: const Color(0xFF166534), bg: AppTheme.greenLight,
           icon: Icons.check_circle_rounded,
         ),
         if (!state.vanEmRota) ...[
           const SizedBox(height: 10),
           AlertBanner(
             message: '⚠️ Atenção! A van saiu do trajeto padrão.',
-            color: const Color(0xFF9A3412),
-            bg: AppTheme.orangeLight,
+            color: const Color(0xFF9A3412), bg: AppTheme.orangeLight,
             icon: Icons.warning_amber_rounded,
           ),
         ],
         const SizedBox(height: 24),
       ],
     );
-  }
-
-  String _horaAtual() {
-    final now = DateTime.now();
-    return '${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}';
   }
 }
 
@@ -116,27 +200,11 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: emRota ? AppTheme.greenLight : AppTheme.orangeLight,
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: emRota ? AppTheme.greenLight : AppTheme.orangeLight, borderRadius: BorderRadius.circular(20)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 8, height: 8,
-          decoration: BoxDecoration(
-            color: emRota ? AppTheme.green : AppTheme.orange,
-            shape: BoxShape.circle,
-          ),
-        ),
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: emRota ? AppTheme.green : AppTheme.orange, shape: BoxShape.circle)),
         const SizedBox(width: 6),
-        Text(
-          status,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: emRota ? const Color(0xFF166534) : const Color(0xFF9A3412),
-          ),
-        ),
+        Text(status, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: emRota ? const Color(0xFF166534) : const Color(0xFF9A3412))),
       ]),
     );
   }

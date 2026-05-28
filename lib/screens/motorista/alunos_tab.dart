@@ -35,9 +35,11 @@ class _AlunosTabState extends State<AlunosTab> {
     ));
     _nomeCtrl.clear(); _turmaCtrl.clear(); _endCtrl.clear(); _telCtrl.clear();
     setState(() => _expandForm = false);
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('✅ Aluno cadastrado com sucesso!'), backgroundColor: AppTheme.green),
     );
+    }
   }
 
   @override
