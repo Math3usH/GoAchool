@@ -16,12 +16,12 @@ class _RastreamentoTabState extends State<RastreamentoTab> {
   GoogleMapController? _mapController;
   List<LatLng> _rotaPoints = [];
 
-  final _schoolPos = const LatLng(-27.1700, -51.5030);
+  final _schoolPos = const LatLng(-26.2920, -48.8430); // Escola — Joinville
   final List<LatLng> _paradas = const [
-    LatLng(-27.1731, -51.5069),
-    LatLng(-27.1745, -51.5080),
-    LatLng(-27.1720, -51.5055),
-    LatLng(-27.1760, -51.5090),
+    LatLng(-26.3044, -48.8487), // Lucas — Bom Retiro
+    LatLng(-26.3020, -48.8456), // Ana Beatriz — Centro
+    LatLng(-26.2985, -48.8520), // Pedro — Bucarein
+    LatLng(-26.3080, -48.8390), // Maria — Atiradores
   ];
 
   @override
@@ -173,7 +173,7 @@ class _RastreamentoTabState extends State<RastreamentoTab> {
         const SizedBox(height: 14),
 
         AlertBanner(
-          message: '✅ Lucas entrou na van às 07:20 — Rua das Flores, 148',
+          message: '✅ Lucas entrou na van às 07:20 — Rua das Palmeiras, 148',
           color: const Color(0xFF166534), bg: AppTheme.greenLight,
           icon: Icons.check_circle_rounded,
         ),

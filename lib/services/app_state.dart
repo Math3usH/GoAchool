@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import 'database_service.dart';
 
@@ -15,24 +16,28 @@ class AppState extends ChangeNotifier {
   // ── Confirmação do dia ───────────────────────────────────────────────────────
   bool filhoConfirmado = false;
 
+  // ID do Lucas (filho da Ana Silva — responsável demo).
+  // Ele só aparece na rota do motorista se a Ana confirmar no painel dela.
+  static const int _idLucas = 1;
+
   // ── Checklist ───────────────────────────────────────────────────────────────
   Map<int, CheckStatus> embarqueStatus = {};
   Map<int, CheckStatus> desembarqueStatus = {};
 
   // ── Van simulada ─────────────────────────────────────────────────────────────
-  double vanLat = -27.1731;
-  double vanLng = -51.5069;
+  double vanLat = -26.3044;
+  double vanLng = -48.8487;
   double vanVelocidade = 42;
   bool vanEmRota = true;
   Timer? _vanTimer;
   int _vanStep = 0;
 
   final List<List<double>> _rotaSimulada = [
-    [-27.1731, -51.5069],
-    [-27.1745, -51.5080],
-    [-27.1720, -51.5055],
-    [-27.1760, -51.5090],
-    [-27.1700, -51.5030],
+    [-26.3044, -48.8487], // Lucas — Bom Retiro
+    [-26.3020, -48.8456], // Ana Beatriz — Centro
+    [-26.2985, -48.8520], // Pedro — Bucarein
+    [-26.3080, -48.8390], // Maria — Atiradores
+    [-26.2920, -48.8430], // Escola
   ];
 
   // ── Notificações ─────────────────────────────────────────────────────────────
@@ -59,10 +64,21 @@ class AppState extends ChangeNotifier {
   Future<void> login(String email, String senha, String role) async {
     perfil = role;
     nomeUsuario = role == 'responsavel' ? 'Ana Silva' : 'Carlos Fernandes';
+    await _carregarConfirmacao(); // lê o toggle salvo antes de montar a rota
     await carregarAlunos();
     _iniciarSimulacaoVan();
     _carregarNotificacoesDemo();
     notifyListeners();
+  }
+
+  Future<void> _carregarConfirmacao() async {
+    final prefs = await SharedPreferences.getInstance();
+    filhoConfirmado = prefs.getBool('lucas_confirmado') ?? false;
+  }
+
+  Future<void> _salvarConfirmacao() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('lucas_confirmado', filhoConfirmado);
   }
 
   void logout() {
@@ -75,17 +91,27 @@ class AppState extends ChangeNotifier {
     loadingAlunos = true;
     notifyListeners();
     alunos = await DatabaseService.getAlunos();
+
+    // Lucas: ativo = o que a Ana confirmou (lido do SharedPreferences antes desta chamada)
+    final idxLucas = alunos.indexWhere((a) => a.id == _idLucas);
+    if (idxLucas >= 0) {
+      final a = alunos[idxLucas];
+      alunos[idxLucas] = Aluno(
+        id: a.id, nome: a.nome, turma: a.turma,
+        endereco: a.endereco, telefoneResponsavel: a.telefoneResponsavel,
+        ativo: filhoConfirmado, lat: a.lat, lng: a.lng,
+      );
+    }
+
     for (final a in alunos) {
       embarqueStatus.putIfAbsent(a.id, () => CheckStatus.pendente);
       desembarqueStatus.putIfAbsent(a.id, () => CheckStatus.pendente);
     }
-    // Demo: primeiros 3 já embarcaram
-    if (alunos.isNotEmpty) {
-      embarqueStatus[alunos[0].id] = CheckStatus.presente;
-      if (alunos.length > 1) embarqueStatus[alunos[1].id] = CheckStatus.presente;
-      if (alunos.length > 2) embarqueStatus[alunos[2].id] = CheckStatus.presente;
-      if (alunos.length > 3) embarqueStatus[alunos[3].id] = CheckStatus.ausente;
-    }
+    // Demo: alunos 2, 3 e 4 já embarcaram
+    if (alunos.length > 1) embarqueStatus[alunos[1].id] = CheckStatus.presente;
+    if (alunos.length > 2) embarqueStatus[alunos[2].id] = CheckStatus.presente;
+    if (alunos.length > 3) embarqueStatus[alunos[3].id] = CheckStatus.presente;
+
     loadingAlunos = false;
     notifyListeners();
   }
@@ -145,8 +171,21 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Toggle da Ana Silva — liga/desliga Lucas na rota do motorista
   void toggleConfirmacao() {
     filhoConfirmado = !filhoConfirmado;
+    _salvarConfirmacao(); // persiste para o próximo login
+
+    final idx = alunos.indexWhere((a) => a.id == _idLucas);
+    if (idx >= 0) {
+      final a = alunos[idx];
+      alunos[idx] = Aluno(
+        id: a.id, nome: a.nome, turma: a.turma,
+        endereco: a.endereco, telefoneResponsavel: a.telefoneResponsavel,
+        ativo: filhoConfirmado,
+        lat: a.lat, lng: a.lng,
+      );
+    }
     notifyListeners();
   }
 
@@ -157,9 +196,10 @@ class AppState extends ChangeNotifier {
   int get totalPendentes =>
       embarqueStatus.values.where((s) => s == CheckStatus.pendente).length;
 
+  /// Retorna apenas alunos ativos ordenados por longitude.
+  /// Lucas só aparece aqui se a Ana tiver confirmado (ativo = true).
   List<Aluno> get rotaOrdenada {
     final ativos = alunos.where((a) => a.ativo).toList();
-    // Algoritmo guloso simples: ordena por distância acumulada
     if (ativos.isEmpty) return [];
     final sorted = List<Aluno>.from(ativos);
     sorted.sort((a, b) => a.lng.compareTo(b.lng));
@@ -181,11 +221,11 @@ class AppState extends ChangeNotifier {
 
   void _carregarNotificacoesDemo() {
     notificacoes = [
-      Notificacao(titulo: 'Lucas entrou na van', descricao: 'Rua das Flores, 148 — 07:20', hora: DateTime.now().subtract(const Duration(minutes: 30)), tipo: NotifTipo.embarque),
+      Notificacao(titulo: 'Lucas entrou na van', descricao: 'Rua das Palmeiras, 148 — 07:20', hora: DateTime.now().subtract(const Duration(minutes: 30)), tipo: NotifTipo.embarque),
       Notificacao(titulo: 'Lucas chegou na escola', descricao: 'Escola Estadual Boa Vista — 07:41', hora: DateTime.now().subtract(const Duration(minutes: 10)), tipo: NotifTipo.chegouEscola),
       Notificacao(titulo: 'Previsão de busca atualizada', descricao: 'Chegada estimada às 17:12', hora: DateTime.now().subtract(const Duration(minutes: 8)), tipo: NotifTipo.eta, lida: true),
       Notificacao(titulo: 'Lucas saiu da escola', descricao: 'Embarcou na van — ontem 17:08', hora: DateTime.now().subtract(const Duration(hours: 22)), tipo: NotifTipo.saiuEscola, lida: true),
-      Notificacao(titulo: 'Lucas chegou em casa', descricao: 'Rua das Flores, 148 — ontem 17:35', hora: DateTime.now().subtract(const Duration(hours: 22, minutes: 27)), tipo: NotifTipo.chegouCasa, lida: true),
+      Notificacao(titulo: 'Lucas chegou em casa', descricao: 'Rua das Palmeiras, 148 — ontem 17:35', hora: DateTime.now().subtract(const Duration(hours: 22, minutes: 27)), tipo: NotifTipo.chegouCasa, lida: true),
     ];
   }
 

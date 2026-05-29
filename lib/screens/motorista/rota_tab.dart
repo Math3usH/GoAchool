@@ -18,8 +18,11 @@ class _RotaTabState extends State<RotaTab> {
   List<LatLng> _rotaPoints = [];
   bool _carregandoRota = false;
 
-  final LatLng _garagem = const LatLng(-27.1800, -51.5100);
-  final LatLng _escola  = const LatLng(-27.1700, -51.5030);
+  // Guarda os IDs da última rota carregada para detectar mudanças
+  List<int> _ultimaRotaIds = [];
+
+  final LatLng _garagem = const LatLng(-26.3150, -48.8600); // Garagem — Joinville
+  final LatLng _escola  = const LatLng(-26.2920, -48.8430); // Escola — Joinville
 
   @override
   void initState() {
@@ -27,10 +30,34 @@ class _RotaTabState extends State<RotaTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _carregarRota());
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Recarrega a rota sempre que a lista de alunos ativos mudar
+    final rota = context.read<AppState>().rotaOrdenada;
+    final ids = rota.map((a) => a.id).toList();
+    if (!_listasIguais(ids, _ultimaRotaIds)) {
+      _ultimaRotaIds = ids;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _carregarRota());
+    }
+  }
+
+  bool _listasIguais(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
   Future<void> _carregarRota() async {
     final state = context.read<AppState>();
     final rota = state.rotaOrdenada;
-    if (rota.isEmpty) return;
+
+    if (rota.isEmpty) {
+      if (mounted) setState(() { _rotaPoints = []; _carregandoRota = false; });
+      return;
+    }
 
     setState(() => _carregandoRota = true);
 

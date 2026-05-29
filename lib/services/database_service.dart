@@ -6,15 +6,25 @@ import '../models/models.dart';
 /// Funciona em Web, Android e iOS sem configuração extra.
 class DatabaseService {
   static const _keyAlunos = 'goschool_alunos';
+  static const _keyVersao = 'goschool_versao';
+  // Incremente esse número sempre que mudar os dados demo
+  static const _versaoAtual = 3;
   static int _nextId = 100;
 
   // ── Alunos ──────────────────────────────────────────────────────────────────
 
   static Future<List<Aluno>> getAlunos() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Se a versão dos dados mudou, limpa o cache e recarrega os dados demo
+    final versaoSalva = prefs.getInt(_keyVersao) ?? 0;
+    if (versaoSalva < _versaoAtual) {
+      await prefs.remove(_keyAlunos);
+      await prefs.setInt(_keyVersao, _versaoAtual);
+    }
+
     final raw = prefs.getString(_keyAlunos);
     if (raw == null) {
-      // Primeira execução: grava os dados demo e retorna
       final demo = _dadosDemo();
       await _salvarTodos(demo);
       return demo;
@@ -61,10 +71,10 @@ class DatabaseService {
   // ── Dados demo ──────────────────────────────────────────────────────────────
 
   static List<Aluno> _dadosDemo() => [
-        Aluno(id: 1, nome: 'Lucas Vieira', turma: '5A', endereco: 'Rua das Flores, 148', telefoneResponsavel: '(49) 99123-4567', ativo: true, lat: -27.1731, lng: -51.5069),
-        Aluno(id: 2, nome: 'Ana Beatriz Costa', turma: '3B', endereco: 'Rua do Cedro, 22', telefoneResponsavel: '(49) 98765-1234', ativo: true, lat: -27.1745, lng: -51.5080),
-        Aluno(id: 3, nome: 'Pedro Henrique Lima', turma: '4A', endereco: 'Av. das Palmeiras, 310', telefoneResponsavel: '(49) 99234-5678', ativo: true, lat: -27.1720, lng: -51.5055),
-        Aluno(id: 4, nome: 'Maria Fernanda', turma: '2B', endereco: 'Rua Ipê, 7', telefoneResponsavel: '(49) 99345-6789', ativo: true, lat: -27.1760, lng: -51.5090),
-        Aluno(id: 5, nome: 'João Guilherme', turma: '6A', endereco: 'Rua do Sol, 55', telefoneResponsavel: '(49) 99456-7890', ativo: false, lat: -27.1710, lng: -51.5040),
+        Aluno(id: 1, nome: 'Lucas Vieira',       turma: '5A', endereco: 'Rua das Palmeiras, 148, Bom Retiro',          telefoneResponsavel: '(47) 99123-4567', ativo: true,  lat: -26.3044, lng: -48.8487),
+        Aluno(id: 2, nome: 'Ana Beatriz Costa',   turma: '3B', endereco: 'Rua Ministro Calógeras, 22, Centro',          telefoneResponsavel: '(47) 98765-1234', ativo: true,  lat: -26.3020, lng: -48.8456),
+        Aluno(id: 3, nome: 'Pedro Henrique Lima', turma: '4A', endereco: 'Av. Juscelino Kubitschek, 310, Bucarein',     telefoneResponsavel: '(47) 99234-5678', ativo: true,  lat: -26.2985, lng: -48.8520),
+        Aluno(id: 4, nome: 'Maria Fernanda',      turma: '2B', endereco: 'Rua Blumenau, 7, Atiradores',                 telefoneResponsavel: '(47) 99345-6789', ativo: true,  lat: -26.3080, lng: -48.8390),
+        Aluno(id: 5, nome: 'João Guilherme',      turma: '6A', endereco: 'Rua do Príncipe, 55, Centro',                 telefoneResponsavel: '(47) 99456-7890', ativo: false, lat: -26.3060, lng: -48.8460),
       ];
 }
